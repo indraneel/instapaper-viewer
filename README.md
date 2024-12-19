@@ -42,6 +42,12 @@ CREATE TABLE articles (
 );
 ```
 
+4. Populate DB
+
+```bash
+node load-articles.js
+```
+
 ## Usage
 
 Start the server:
