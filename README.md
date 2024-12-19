@@ -1,6 +1,6 @@
 # Instapaper Management App
 
-A web application for managing your Instapaper bookmarks with a clean interface and keyboard shortcuts.
+A web application for managing your Instapaper bookmarks with a clean interface and keyboard shortcuts. The nice thing is this stores past the 500 article limit you normally get back from the API
 
 ## Features
 
