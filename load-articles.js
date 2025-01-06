@@ -28,9 +28,9 @@ client.list({
     fs.writeFileSync('./bookmarks.json', JSON.stringify(bookmarks, null, 2) , 'utf-8');
     const preprocessBookmark = (bm) => {
         return client.getText(bm.bookmark_id).then((text) => {
-            return Promise.resolve([bm.title, bm.url, text, bm.hash, bm.bookmark_id, bm.time, bm.progress_timestamp, bm.progress, false]);
+            return Promise.resolve([bm.title, bm.url, text, bm.hash, bm.bookmark_id, bm.time, bm.progress_timestamp, bm.progress, false, null, null]);
         }).catch((e) => {
-            return Promise.resolve([bm.title, bm.url, '', bm.hash, bm.bookmark_id, bm.time, bm.progress_timestamp, bm.progress, false]);
+            return Promise.resolve([bm.title, bm.url, '', bm.hash, bm.bookmark_id, bm.time, bm.progress_timestamp, bm.progress, false, null, null]);
         });
     }
     const getBookmarkPromises = bookmarks.map(bm => preprocessBookmark(bm));
@@ -40,7 +40,7 @@ client.list({
         bookmarkResponsesArr.forEach((response) => {
             if (response[1] && response[1] != '') {
                 console.log(response);
-                db.run(`INSERT OR REPLACE INTO articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, response, (err) => {
+                db.run(`INSERT OR REPLACE INTO articles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, response, (err) => {
                     if (err) {
                         console.log(err.name, err.message)
                     }

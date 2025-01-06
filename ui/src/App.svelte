@@ -5,6 +5,44 @@
   let selectedBookmark = 0;
   let selectedBookmarkId = 0;
   let textViewContent = '';
+  
+  let searchQuery = '';
+  let searchResults = [];
+  let currentSummary = '';
+  let isSearching = false;
+  let isLoadingSummary = false;
+
+  async function performSearch() {
+    if (!searchQuery.trim()) return;
+    
+    isSearching = true;
+    try {
+      const response = await fetch(`http://localhost:3000/search?query=${encodeURIComponent(searchQuery)}`);
+      if (response.ok) {
+        searchResults = await response.json();
+        selectedBookmark = bookmarks.findIndex(b => b.bookmark_id === searchResults[0]?.bookmark_id);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      isSearching = false;
+    }
+  }
+
+  async function getSummary(bookmarkId) {
+    isLoadingSummary = true;
+    try {
+      const response = await fetch(`http://localhost:3000/summary/${bookmarkId}`);
+      if (response.ok) {
+        const data = await response.json();
+        currentSummary = data.summary;
+      }
+    } catch (error) {
+      console.error('Summary error:', error);
+    } finally {
+      isLoadingSummary = false;
+    }
+  }
 
   async function fetchBookmarks() {
     const response = await fetch('http://localhost:3000/bookmarks');
@@ -87,6 +125,8 @@
       selectedBookmark = Math.floor(Math.random() * bookmarks.length);
       selectedBookmarkId = bookmarks[selectedBookmark].bookmark_id;
       getText(selectedBookmarkId);
+    } else if (e.key === 's') {
+      getSummary(selectedBookmarkId);
     }
   }
 
@@ -108,6 +148,46 @@
 </svelte:head>
 
 <div class="flex h-screen">
+  <div class="flex-col w-64 bg-stone-900 p-4">
+    <!-- Search panel -->
+    <div class="mb-4">
+      <input
+        type="text"
+        bind:value={searchQuery}
+        placeholder="Search articles..."
+        class="w-full p-2 bg-stone-800 text-stone-100 rounded"
+        on:keydown={(e) => {
+          e.preventDefault(); 
+          if (e.key === 'Enter') { performSearch() }
+        }}
+      />
+      {#if isSearching}
+        <div class="text-stone-400 text-sm mt-2">Searching...</div>
+      {/if}
+      {#if searchResults.length > 0}
+        <div class="mt-4">
+          <h3 class="text-stone-100 mb-2">Search Results</h3>
+          {#each searchResults as result}
+            <div
+              class="cursor-pointer p-2 hover:bg-stone-700 text-stone-400"
+              on:click={() => {
+                const index = bookmarks.findIndex(b => b.bookmark_id === result.bookmark_id);
+                if (index !== -1) {
+                  selectedBookmark = index;
+                  selectedBookmarkId = result.bookmark_id;
+                  getText(result.bookmark_id);
+                }
+              }}
+            >
+              <div class="text-sm font-medium">{result.title}</div>
+              <div class="text-xs">Similarity: {(result.similarity * 100).toFixed(1)}%</div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  </div>
+
   <div class="flex-1 w-full sticky top-0">
     <table id="table" class="text-lg text-left table table-fixed w-full">
       <tbody id="tbody" class="bg-stone-800 block h-screen overflow-auto">
@@ -187,4 +267,15 @@
       {@html textViewContent}
     </div>
   </div>
+    <!-- Add summary panel -->
+    {#if currentSummary}
+    <div class="w-64 bg-stone-900 p-4">
+      <h3 class="text-stone-100 mb-2">Summary</h3>
+      {#if isLoadingSummary}
+        <div class="text-stone-400">Loading summary...</div>
+      {:else}
+        <div class="text-stone-400 text-sm">{currentSummary}</div>
+      {/if}
+    </div>
+  {/if}
 </div>

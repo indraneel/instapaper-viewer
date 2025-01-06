@@ -5,6 +5,13 @@ const Epub = require("epub-gen");
 const sqlite3 = require("sqlite3").verbose();
 const open = require("sqlite").open;
 require('dotenv').config();
+
+// Initialize RAG service
+const RAGService = require('./rag-service');
+const ragService = new RAGService('./instapaper.db', process.env.OPENAI_API_KEY);
+
+
+
 const app = express();
 const port = 3000;
 
@@ -182,6 +189,62 @@ app.get("/getText",  async function (req, res) {
   res.send(response);
 });
 
-app.listen(port, function () {
+// Get or generate summary for an article
+app.get('/summary/:bookmarkId', async (req, res) => {
+  try {
+    const article = await ragService.processArticle(req.params.bookmarkId);
+    console.log(article)
+    if (!article) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+    res.json({ summary: article.summary });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Semantic search endpoint
+app.get('/search', async (req, res) => {
+  try {
+    const { query, limit } = req.query;
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+    const results = await ragService.semanticSearch(query, parseInt(limit) || 15);
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Batch process articles (for initial setup)
+app.get('/process', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100; // Default to 10 articles
+    const skip = parseInt(req.query.skip) || 0;
+    
+    const articles = await listDb(limit, skip);
+    const processed = [];
+    
+    for (const article of articles) {
+      const result = await ragService.processArticle(article.bookmark_id);
+      if (result) processed.push(result);
+    }
+    
+    res.json({ 
+      message: `Processed ${processed.length} articles`,
+      skip,
+      limit,
+      processed 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+app.listen(port, async function () {
   console.log(`Instapaper mgmt app listening on port ${port}!`);
+  console.log("init rag db")
+  await ragService.initDB();
 });
