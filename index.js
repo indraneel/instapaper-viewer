@@ -181,6 +181,25 @@ app.get("/unstar", function (req, res) {
   });
 });
 
+app.get("/updateProgress", function (req, res) {
+  const params = {
+    bookmark_id: req.query.id,
+    progress: parseFloat(req.query.progress),
+    progress_timestamp: Math.floor(Date.now() / 1000) // Current timestamp in seconds
+  };
+  
+  // Validate progress is between 0 and 1
+  if (params.progress < 0 || params.progress > 1) {
+    return res.status(400).send({ error: "Progress must be between 0 and 1" });
+  }
+
+  client.updateReadProgress(params).then((r) => {
+    res.send(r);
+  }).catch(err => {
+    res.status(500).send({ error: err.message });
+  });
+});
+
 app.get("/getText",  async function (req, res) {
   // client.getText(req.query.id).then((r) => {
   //   res.send(r);
