@@ -17,6 +17,9 @@ npm run dev
 - Progress tracking and timestamps
 - Star/archive functionality
 - Article preview in-app
+- AI-powered semantic search
+- Automatic article summarization
+- Smart search results ranking
 
 ## Tech Stack
 
@@ -44,3 +47,6 @@ npm run preview
 - Responsive text viewer
 - Link previews
 - Star/archive controls
+- Search interface with semantic results
+- Summary panel with AI-generated content
+- Progress tracking system
