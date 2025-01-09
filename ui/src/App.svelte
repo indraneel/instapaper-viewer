@@ -581,9 +581,64 @@
     </div>
 
     <div id="text-view-container" class="flex-1">
+      {#if selectedBookmarkId && bookmarks.length > 0}
+        {@const selectedBookmarkData = bookmarks.find(b => b.bookmark_id === selectedBookmarkId)}
+        {#if selectedBookmarkData}
+          <div class="bg-stone-700 p-4 border-b border-stone-600">
+            <div class="flex justify-between items-center">
+              <div class="flex flex-col gap-1 w-5/6">
+                <div class="truncate text-stone-100">
+                  <a href={selectedBookmarkData.url} target="_blank" class="hover:underline">
+                    {selectedBookmarkData.title || selectedBookmarkData.url}
+                  </a>
+                </div>
+                <div class="text-xs truncate text-stone-400">
+                  {#if selectedBookmarkData.progress_timestamp !== 0}
+                    <span>
+                      Last read {new Date(selectedBookmarkData.progress_timestamp).getFullYear()}-
+                      {new Date(selectedBookmarkData.progress_timestamp).getMonth() + 1}-
+                      {new Date(selectedBookmarkData.progress_timestamp).getDate()} |
+                    </span>
+                  {/if}
+                  <span class="text-xs">{selectedBookmarkData.url}</span>
+                </div>
+              </div>
+              <div class="flex flex-row items-center gap-1">
+                <span class="text-stone-400">{Math.round(selectedBookmarkData.progress * 100)}%</span>
+                <div class="flex gap-2">
+                  <button
+                    class="text-stone-400 hover:text-stone-200"
+                    on:click={() => archive(selectedBookmarkData.bookmark_id, selectedBookmark)}
+                  >
+                    Archive
+                  </button>
+                  <button
+                    class="text-stone-400 hover:text-stone-200"
+                    on:click={() => getText(selectedBookmarkData.bookmark_id)}
+                  >
+                    ▶
+                  </button>
+                  <button
+                    class="text-stone-400 hover:text-stone-200"
+                    on:click={() => {
+                      if (selectedBookmarkData.starred === '1') {
+                        unstar(selectedBookmarkData.bookmark_id);
+                      } else {
+                        star(selectedBookmarkData.bookmark_id);
+                      }
+                    }}
+                  >
+                    {selectedBookmarkData.starred === '1' ? '♥' : '♡'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        {/if}
+      {/if}
       <div
         id="text-view"
-        class="bg-stone-800 text-stone-400 w-full h-[calc(100vh-4rem)] text-lg overflow-auto"
+        class="bg-stone-800 text-stone-400 w-full h-[calc(100vh-4rem-3.5rem)] text-lg overflow-auto"
         on:scroll={handleScroll}
       >
         {@html textViewContent}
