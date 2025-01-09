@@ -26,7 +26,7 @@ const db = new sqlite3.Database("./instapaper.db");
 const listDb = (limit, start) => {
   return new Promise((resolve, reject) => {
     db.all(
-      `SELECT * FROM articles ORDER BY time DESC ${limit ? `LIMIT ${limit}` : ''};`,
+      `SELECT * FROM articles ORDER BY time DESC ${limit ? `LIMIT ${limit}` : ''} OFFSET ${start};`,
       (err, rows) => {
         if (err) {
           reject(err.message);
