@@ -103,10 +103,16 @@
       const nextIndex = (currentIndex + 1) % allBookmarks.length;
       selectedBookmarkId = allBookmarks[nextIndex].bookmark_id;
       selectedBookmark = bookmarks.findIndex((b) => b.bookmark_id === selectedBookmarkId);
+      setTimeout(() => {
+        document.getElementById(`row-${selectedBookmarkId}`)?.scrollIntoView({ block: 'nearest' });
+      }, 0);
     } else if (e.key === 'k') {
       const prevIndex = currentIndex - 1 < 0 ? allBookmarks.length - 1 : currentIndex - 1;
       selectedBookmarkId = allBookmarks[prevIndex].bookmark_id;
       selectedBookmark = bookmarks.findIndex((b) => b.bookmark_id === selectedBookmarkId);
+      setTimeout(() => {
+        document.getElementById(`row-${selectedBookmarkId}`)?.scrollIntoView({ block: 'nearest' });
+      }, 0);
     } else if (e.key === 'l') {
       const bookmark = allBookmarks[currentIndex];
       if (bookmark.starred === '0') {
