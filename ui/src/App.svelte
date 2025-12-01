@@ -20,6 +20,7 @@
   let searchResults = [];
   let isSearching = false;
   let currentDate = undefined;
+  let originalBookmarks = null;
   let scrollTimeout;
   
   function calculateReadingProgress(element) {
@@ -225,13 +226,33 @@
     fetchBookmarks();
   }
 
-  function closeSearch() {
+  function closeSearch(keepSelection = false) {
+    const previousSelection = selectedBookmarkId;
     searchResults = [];
     searchQuery = '';
+    if (originalBookmarks) {
+      bookmarks = originalBookmarks;
+      originalBookmarks = null;
+      groupBookmarks();
+    }
+    if (keepSelection && previousSelection) {
+      selectedBookmarkId = previousSelection;
+      setTimeout(() => {
+        document.getElementById(`row-${selectedBookmarkId}`)?.scrollIntoView({ block: 'center' });
+      }, 0);
+    }
   }
 
   async function performSearch() {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      // Empty query = restore full list
+      if (originalBookmarks) {
+        bookmarks = originalBookmarks;
+        originalBookmarks = null;
+        groupBookmarks();
+      }
+      return;
+    }
 
     isSearching = true;
     try {
@@ -240,9 +261,19 @@
       );
       if (response.ok) {
         searchResults = await response.json();
-        selectedBookmark = bookmarks.findIndex(
-          (b) => b.bookmark_id === searchResults[0]?.bookmark_id
-        );
+        // Store original bookmarks for restoration
+        if (!originalBookmarks) {
+          originalBookmarks = [...bookmarks];
+        }
+        // Filter bookmarks to only those in search results, maintaining search order
+        bookmarks = searchResults.map(r =>
+          originalBookmarks.find(b => b.bookmark_id === r.bookmark_id)
+        ).filter(Boolean);
+        groupBookmarks();
+        // Select first result
+        if (bookmarks.length > 0) {
+          selectedBookmarkId = bookmarks[0].bookmark_id;
+        }
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -378,30 +409,6 @@
       {#if isSearching}
         <div class="text-stone-400 text-sm mt-2">Searching...</div>
       {/if}
-      {#if searchResults.length > 0}
-        <div
-          class="absolute top-full left-0 right-0 mt-1 bg-stone-900 border border-stone-700 rounded shadow-lg max-h-96 overflow-y-auto z-50"
-        >
-          {#each searchResults as result}
-            <div
-              class="cursor-pointer p-3 hover:bg-stone-700 text-stone-400 border-b border-stone-700 last:border-b-0"
-              on:click={() => {
-                const index = bookmarks.findIndex((b) => b.bookmark_id === result.bookmark_id);
-                if (index !== -1) {
-                  selectedBookmark = index;
-                  selectedBookmarkId = result.bookmark_id;
-                  getText(result.bookmark_id);
-                  searchResults = [];
-                  searchQuery = '';
-                }
-              }}
-            >
-              <div class="text-sm font-medium">{result.title}</div>
-              <div class="text-xs">Similarity: {(result.similarity * 100).toFixed(1)}%</div>
-            </div>
-          {/each}
-        </div>
-      {/if}
     </div>
 
     <div class="relative group">
@@ -505,6 +512,7 @@
                         selectedBookmark = i;
                         selectedBookmarkId = bookmark.bookmark_id;
                         getText(bookmark.bookmark_id);
+                        if (originalBookmarks) closeSearch(true);
                       }}
                     >
                       <td class="w-full flex justify-between" style="min-width: 45vw  ">
@@ -574,6 +582,7 @@
                     selectedBookmark = bookmarks.indexOf(bookmark);
                     selectedBookmarkId = bookmark.bookmark_id;
                     getText(bookmark.bookmark_id);
+                    if (originalBookmarks) closeSearch(true);
                   }}
                 >
                   <td class="w-[5%] text-center">
