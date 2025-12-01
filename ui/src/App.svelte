@@ -1,8 +1,10 @@
 <script>
   import { onMount } from 'svelte';
+  import Modal from './lib/Modal.svelte';
 
   // Shared state
   let bookmarks = [];
+  let showShortcutsModal = false;
   let filteredBookmarks = [];
   let selectedBookmark = 0;
   let selectedBookmarkId = 0;
@@ -53,6 +55,13 @@
   }
 
   function handleKeydown(e) {
+    if (e.key === '?') {
+      showShortcutsModal = !showShortcutsModal;
+      return;
+    }
+
+    if (showShortcutsModal) return;
+
     const allBookmarks = getAllBookmarks();
     if (allBookmarks.length === 0) return;
 
@@ -658,3 +667,54 @@
     {/if}
   </div>
 </div>
+
+<Modal open={showShortcutsModal} onclose={() => showShortcutsModal = false} title="Keyboard Shortcuts">
+  <table class="w-full text-stone-300">
+    <tbody>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">j</kbd></td>
+        <td class="py-2">Next article</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">k</kbd></td>
+        <td class="py-2">Previous article</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">Shift</kbd> + <kbd class="bg-stone-700 px-2 py-1 rounded">J</kbd></td>
+        <td class="py-2">Next group</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">Shift</kbd> + <kbd class="bg-stone-700 px-2 py-1 rounded">K</kbd></td>
+        <td class="py-2">Previous group</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">l</kbd></td>
+        <td class="py-2">Toggle star</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">Enter</kbd></td>
+        <td class="py-2">View article</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">Backspace</kbd></td>
+        <td class="py-2">Archive article</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">0</kbd></td>
+        <td class="py-2">Jump to first</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">r</kbd></td>
+        <td class="py-2">Random article</td>
+      </tr>
+      <tr class="border-b border-stone-700">
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">s</kbd></td>
+        <td class="py-2">Show AI summary</td>
+      </tr>
+      <tr>
+        <td class="py-2 pr-4"><kbd class="bg-stone-700 px-2 py-1 rounded">?</kbd></td>
+        <td class="py-2">Show this help</td>
+      </tr>
+    </tbody>
+  </table>
+</Modal>
