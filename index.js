@@ -13,7 +13,7 @@ const ragService = new RAGService('./instapaper.db', process.env.OPENAI_API_KEY)
 
 
 const app = express();
-const port = 3000;
+const port = 3002;
 
 const Instapaper = require("instapaper-node-sdk");
 const client = new Instapaper(
@@ -25,19 +25,24 @@ const db = new sqlite3.Database("./instapaper.db");
 
 const listDb = (limit, start) => {
   return new Promise((resolve, reject) => {
-    db.all(
-      `SELECT * FROM articles ORDER BY time DESC ${limit ? `LIMIT ${limit}` : ''} OFFSET ${start};`,
-      (err, rows) => {
-        if (err) {
-          reject(err.message);
-        } else {
-          resolve(rows);
-        }
-      },
-    );
+    // Construct the SQL query dynamically
+    let query = `SELECT * FROM articles ORDER BY time DESC`;
+    if (limit) {
+      query += ` LIMIT ${limit}`;
+      if (start) {
+        query += ` OFFSET ${start}`;
+      }
+    }
+
+    db.all(query, (err, rows) => {
+      if (err) {
+        reject(err.message);
+      } else {
+        resolve(rows);
+      }
+    });
   });
 };
-
 const getTextDb = (id) => {
   return new Promise((resolve, reject) => {
     db.get(`SELECT * FROM articles WHERE bookmark_id = ${id};`, (err, row) => {
