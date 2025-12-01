@@ -138,32 +138,36 @@ class RAGService {
     `);
 
     const similarities = chunks.map(chunk => {
-      // Calculate embedding similarity
+      // Tier 4: Semantic content (embedding similarity) - base score 0-1
       const embeddingSimilarity = this.cosineSimilarity(
         queryEmbedding,
         JSON.parse(chunk.embedding.toString())
       );
-      
-      // Calculate title match score using Levenshtein distance
+
       const titleLower = chunk.title.toLowerCase();
+      const domain = this.extractDomain(chunk.url);
+
+      // Tier 1: Domain match (partial) - base score 3.0
+      const domainScore = domain.includes(queryLower) ? 3.0 : 0;
+
+      // Tier 2: Exact title match (title contains query) - base score 2.0
+      const exactTitleScore = titleLower.includes(queryLower) ? 2.0 : 0;
+
+      // Tier 3: Semantic title match (Levenshtein) - base score 0-1
       const distance = this.levenshteinDistance(titleLower, queryLower);
       const maxLength = Math.max(titleLower.length, queryLower.length);
-      let titleScore = 1 - (distance / maxLength); // Normalize to 0-1 range
-      
-      // Boost exact matches and partial matches
-      if (titleLower === queryLower) {
-        titleScore = 1.0; // Exact match
-      } else if (titleLower.includes(queryLower)) {
-        titleScore = Math.max(titleScore, 0.8); // Partial match, but keep higher Levenshtein score if better
-      }
-      
-      // Combine scores with title matches weighted 2x more than embedding similarity
-      const combinedScore = (titleScore * 2 + embeddingSimilarity) / 3;
-      
+      const semanticTitleScore = 1 - (distance / maxLength);
+
+      // Combined: highest tier + embedding as tiebreaker
+      const tierScore = Math.max(domainScore, exactTitleScore, semanticTitleScore);
+      const combinedScore = tierScore + (embeddingSimilarity * 0.1);
+
       return {
         ...chunk,
         similarity: combinedScore,
-        titleScore,
+        domainScore,
+        exactTitleScore,
+        semanticTitleScore,
         embeddingSimilarity
       };
     });
@@ -212,6 +216,15 @@ class RAGService {
       }
     }
     return dp[m][n];
+  }
+
+  extractDomain(url) {
+    try {
+      const hostname = new URL(url).hostname;
+      return hostname.replace(/^www\./, '').toLowerCase();
+    } catch {
+      return '';
+    }
   }
 }
 
