@@ -293,11 +293,12 @@
         return;
       }
       // Update local state
-      bookmarks = bookmarks.map(b => 
-        b.bookmark_id === id 
+      bookmarks = bookmarks.map(b =>
+        b.bookmark_id === id
           ? { ...b, progress, progress_timestamp: Math.floor(Date.now() / 1000) }
           : b
       );
+      groupBookmarks();
     } catch (error) {
       console.error('Error updating progress:', error);
     }
