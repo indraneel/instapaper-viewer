@@ -22,7 +22,9 @@
   let currentDate = undefined;
   let originalBookmarks = null;
   let scrollTimeout;
-  
+  let isMobile = false;
+  let mobileListVisible = true;
+
   function calculateReadingProgress(element) {
     const scrollTop = element.scrollTop;
     const scrollHeight = element.scrollHeight - element.clientHeight;
@@ -337,6 +339,10 @@
 
   async function getText(id) {
     console.log('Fetching text for bookmark ID:', id);
+    // Hide bottom sheet on mobile when opening article
+    if (isMobile) {
+      mobileListVisible = false;
+    }
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/getText?id=${id}`);
       console.log('Response status:', response.status);
@@ -362,8 +368,17 @@
   onMount(() => {
     fetchBookmarks();
     window.addEventListener('keydown', handleKeydown);
+
+    // Mobile detection
+    const checkMobile = () => {
+      isMobile = window.innerWidth < 640;
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
     return () => {
       window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('resize', checkMobile);
     };
   });
 </script>
@@ -376,8 +391,8 @@
 
 <div class="flex flex-col h-screen">
   <!-- Menubar -->
-  <div class="bg-stone-900 p-4 flex items-center gap-4 sticky top-0 z-50 border-b border-stone-700">
-    <div class="flex-1 max-w-md relative">
+  <div class="bg-stone-900 p-2 sm:p-4 flex flex-wrap items-center gap-2 sm:gap-4 sticky top-0 z-50 border-b border-stone-700">
+    <div class="flex-1 min-w-[150px] sm:max-w-md relative">
       <div class="relative">
         <input
           type="text"
@@ -412,8 +427,9 @@
     </div>
 
     <div class="relative group">
-      <button class="px-4 py-2 bg-stone-800 text-stone-100 rounded hover:bg-stone-700">
-        Filter Progress
+      <button class="px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-base bg-stone-800 text-stone-100 rounded hover:bg-stone-700">
+        <span class="hidden sm:inline">Filter Progress</span>
+        <span class="sm:hidden">Filter</span>
       </button>
       <div
         class="hidden group-hover:block absolute top-full left-0 mt-1 bg-stone-900 border border-stone-700 rounded shadow-lg z-50"
@@ -449,7 +465,7 @@
     </div>
 
     <button
-      class="px-4 py-2 bg-stone-800 text-stone-100 rounded hover:bg-stone-700"
+      class="px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-base bg-stone-800 text-stone-100 rounded hover:bg-stone-700"
       on:click={resetFilters}
     >
       Reset
@@ -457,9 +473,24 @@
   </div>
 
   <!-- Main content -->
-  <div class="flex-1 flex min-h-0">
-    <div class="flex-1">
-      <div class="bg-stone-800 h-[calc(100vh-4rem)] overflow-auto">
+  <div class="flex-1 flex min-h-0 relative sm:flex-row flex-col-reverse">
+    <!-- Bookmark list - bottom sheet on mobile, flex-1 on desktop -->
+    <div class="
+      fixed bottom-0 left-0 right-0 z-40 h-[70vh] rounded-t-2xl bg-stone-800
+      sm:relative sm:bottom-auto sm:left-auto sm:right-auto sm:z-auto sm:h-auto sm:rounded-none
+      sm:flex-1
+      transition-transform duration-300 ease-out
+      {isMobile && !mobileListVisible ? 'translate-y-[calc(100%-3rem)]' : 'translate-y-0'}
+    ">
+      <!-- Handle bar (mobile only) -->
+      <button
+        class="sm:hidden flex justify-center py-2 cursor-pointer bg-stone-700 rounded-t-2xl w-full"
+        on:click={() => mobileListVisible = !mobileListVisible}
+        aria-label={mobileListVisible ? 'Hide bookmark list' : 'Show bookmark list'}
+      >
+        <div class="w-12 h-1.5 bg-stone-500 rounded-full"></div>
+      </button>
+      <div class="bg-stone-800 h-[calc(70vh-2.5rem)] sm:h-[calc(100vh-4rem)] overflow-auto">
         <table class="text-lg text-left table-fixed w-full">
           <tbody class="w-full">
             {#if groupBy}
@@ -515,46 +546,54 @@
                         if (originalBookmarks) closeSearch(true);
                       }}
                     >
-                      <td class="w-full flex justify-between" style="min-width: 45vw  ">
-                        <div class="flex flex-col gap-1 w-5/6">
-                          <div class="truncate">
-                            <a href={bookmark.url} target="_blank" class="hover:underline">
-                              {bookmark.title || bookmark.url}
-                            </a>
+                      <td colspan="5" class="w-full p-2 sm:p-0">
+                        <div class="flex justify-between w-full">
+                          <div class="flex flex-col gap-1 flex-1 min-w-0">
+                            <div class="truncate text-sm sm:text-base">
+                              <a
+                                href={bookmark.url}
+                                target="_blank"
+                                class="hover:underline"
+                                on:click|stopPropagation={(e) => { if (isMobile) e.preventDefault(); }}
+                              >
+                                {bookmark.title || bookmark.url}
+                              </a>
+                            </div>
+                            <div class="text-xs truncate hidden sm:block">
+                              {#if bookmark.progress_timestamp !== 0}
+                                <span>
+                                  Last read {new Date(bookmark.progress_timestamp).getFullYear()}-
+                                  {new Date(bookmark.progress_timestamp).getMonth() + 1}-
+                                  {new Date(bookmark.progress_timestamp).getDate()} |
+                                </span>
+                              {/if}
+                              <span class="text-xs">{bookmark.url}</span>
+                            </div>
                           </div>
-                          <div class="text-xs truncate">
-                            {#if bookmark.progress_timestamp !== 0}
-                              <span>
-                                Last read {new Date(bookmark.progress_timestamp).getFullYear()}-
-                                {new Date(bookmark.progress_timestamp).getMonth() + 1}-
-                                {new Date(bookmark.progress_timestamp).getDate()} |
-                              </span>
-                            {/if}
-                            <span class="text-xs">{bookmark.url}</span>
-                          </div>
-                        </div>
-                        <div class="flex flex-row items-center gap-1 w-1/6">
-                          <span>{Math.round(bookmark.progress * 100)}%</span>
-                          <div class="flex gap-2">
-                            <button
-                              on:click|stopPropagation={() => archive(bookmark.bookmark_id, i)}
-                            >
-                              Archive
-                            </button>
-                            <button on:click|stopPropagation={() => getText(bookmark.bookmark_id)}>
-                              ▶
-                            </button>
-                            <button
-                              on:click|stopPropagation={() => {
-                                if (bookmark.starred === '1') {
-                                  unstar(bookmark.bookmark_id);
-                                } else {
-                                  star(bookmark.bookmark_id);
-                                }
-                              }}
-                            >
-                              {bookmark.starred === '1' ? '♥' : '♡'}
-                            </button>
+                          <div class="flex flex-row items-center gap-1 sm:w-1/6 shrink-0">
+                            <span class="text-xs sm:text-base">{Math.round(bookmark.progress * 100)}%</span>
+                            <div class="flex gap-2">
+                              <button
+                                class="hidden sm:block"
+                                on:click|stopPropagation={() => archive(bookmark.bookmark_id, i)}
+                              >
+                                Archive
+                              </button>
+                              <button class="hidden sm:block" on:click|stopPropagation={() => getText(bookmark.bookmark_id)}>
+                                ▶
+                              </button>
+                              <button
+                                on:click|stopPropagation={() => {
+                                  if (bookmark.starred === '1') {
+                                    unstar(bookmark.bookmark_id);
+                                  } else {
+                                    star(bookmark.bookmark_id);
+                                  }
+                                }}
+                              >
+                                {bookmark.starred === '1' ? '♥' : '♡'}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -585,7 +624,39 @@
                     if (originalBookmarks) closeSearch(true);
                   }}
                 >
-                  <td class="w-[5%] text-center">
+                  <!-- Mobile: Single cell layout -->
+                  <td class="sm:hidden w-full p-2">
+                    <div class="flex justify-between w-full">
+                      <div class="flex flex-col gap-1 flex-1 min-w-0">
+                        <div class="truncate text-sm">
+                          <a
+                            href={bookmark.url}
+                            target="_blank"
+                            class="hover:underline"
+                            on:click|stopPropagation={(e) => { if (isMobile) e.preventDefault(); }}
+                          >
+                            {bookmark.title || bookmark.url}
+                          </a>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <span class="text-xs">{Math.round(bookmark.progress * 100)}%</span>
+                        <button
+                          on:click|stopPropagation={() => {
+                            if (bookmark.starred === '1') {
+                              unstar(bookmark.bookmark_id);
+                            } else {
+                              star(bookmark.bookmark_id);
+                            }
+                          }}
+                        >
+                          {bookmark.starred === '1' ? '♥' : '♡'}
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                  <!-- Desktop: Multi-column layout -->
+                  <td class="hidden sm:table-cell w-[5%] text-center">
                     <button
                       on:click|stopPropagation={() => {
                         if (bookmark.starred === '1') {
@@ -598,7 +669,7 @@
                       {bookmark.starred === '1' ? '♥' : '♡'}
                     </button>
                   </td>
-                  <td class="w-[60%] max-w-0">
+                  <td class="hidden sm:table-cell w-[60%] max-w-0">
                     <div class="truncate">
                       <a href={bookmark.url} target="_blank" class="hover:underline">
                         {bookmark.title || bookmark.url}
@@ -615,8 +686,8 @@
                       <span class="text-xs">{bookmark.url}</span>
                     </div>
                   </td>
-                  <td class="w-[10%] text-center">{Math.round(bookmark.progress * 100)}%</td>
-                  <td class="w-[15%] text-center">
+                  <td class="hidden sm:table-cell w-[10%] text-center">{Math.round(bookmark.progress * 100)}%</td>
+                  <td class="hidden sm:table-cell w-[15%] text-center">
                     <button
                       on:click|stopPropagation={() =>
                         archive(bookmark.bookmark_id, bookmarks.indexOf(bookmark))}
@@ -624,7 +695,7 @@
                       Archive
                     </button>
                   </td>
-                  <td class="w-[10%] text-center">
+                  <td class="hidden sm:table-cell w-[10%] text-center">
                     <button on:click|stopPropagation={() => getText(bookmark.bookmark_id)}>
                       ▶
                     </button>
@@ -637,7 +708,8 @@
       </div>
     </div>
 
-    <div id="text-view-container" class="flex-1">
+    <!-- Article reader - full width on mobile, flex-1 on desktop -->
+    <div id="text-view-container" class="w-full sm:flex-1 h-full">
       {#if selectedBookmarkId && bookmarks.length > 0}
         {@const selectedBookmarkData = bookmarks.find(b => b.bookmark_id === selectedBookmarkId)}
         {#if selectedBookmarkData}
@@ -661,10 +733,25 @@
                 </div>
               </div>
               <div class="flex flex-row items-center gap-1">
-                <span class="text-stone-400">{Math.round(selectedBookmarkData.progress * 100)}%</span>
+                <!-- Close button (mobile only) -->
+                {#if isMobile}
+                  <button
+                    class="text-stone-400 hover:text-stone-200 mr-2"
+                    on:click={() => {
+                      textViewContent = '';
+                      mobileListVisible = true;
+                    }}
+                    aria-label="Close article"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                {/if}
+                <span class="text-stone-400 hidden sm:inline">{Math.round(selectedBookmarkData.progress * 100)}%</span>
                 <div class="flex gap-2">
                   <button
-                    class="text-stone-400 hover:text-stone-200"
+                    class="text-stone-400 hover:text-stone-200 hidden sm:block"
                     on:click={() => archive(selectedBookmarkData.bookmark_id, selectedBookmark)}
                   >
                     Archive
@@ -704,13 +791,36 @@
 
     <!-- Summary panel -->
     {#if currentSummary}
-      <div class="w-64 bg-stone-900 p-4 overflow-auto">
+      <!-- Desktop: Side panel -->
+      <div class="hidden sm:block w-64 bg-stone-900 p-4 overflow-auto">
         <h3 class="text-stone-100 mb-2">Summary</h3>
         {#if isLoadingSummary}
           <div class="text-stone-400">Loading summary...</div>
         {:else}
           <div class="text-stone-400 text-sm">{currentSummary}</div>
         {/if}
+      </div>
+      <!-- Mobile: Modal overlay -->
+      <div class="sm:hidden fixed inset-0 bg-black/50 z-50 flex items-end">
+        <div class="bg-stone-900 w-full max-h-[60vh] overflow-auto rounded-t-2xl p-4">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-stone-100">Summary</h3>
+            <button
+              class="text-stone-400 hover:text-stone-200"
+              on:click={() => currentSummary = ''}
+              aria-label="Close summary"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          {#if isLoadingSummary}
+            <div class="text-stone-400">Loading summary...</div>
+          {:else}
+            <div class="text-stone-400 text-sm">{currentSummary}</div>
+          {/if}
+        </div>
       </div>
     {/if}
   </div>
