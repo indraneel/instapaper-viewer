@@ -91,7 +91,7 @@
   }
 
   async function fetchBookmarks() {
-    const response = await fetch('http://localhost:3000/bookmarks');
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/bookmarks`);
     if (response.ok) {
       bookmarks = await response.json();
       if (bookmarks.length > 0) {
@@ -189,7 +189,7 @@
     isSearching = true;
     try {
       const response = await fetch(
-        `http://localhost:3000/search?query=${encodeURIComponent(searchQuery)}`
+        `${import.meta.env.VITE_API_URL}/search?query=${encodeURIComponent(searchQuery)}`
       );
       if (response.ok) {
         searchResults = await response.json();
@@ -207,7 +207,7 @@
   async function getSummary(bookmarkId) {
     isLoadingSummary = true;
     try {
-      const response = await fetch(`http://localhost:3000/summary/${bookmarkId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/summary/${bookmarkId}`);
       if (response.ok) {
         const data = await response.json();
         currentSummary = data.summary;
@@ -220,7 +220,7 @@
   }
 
   async function archive(id, index) {
-    await fetch(`http://localhost:3000/archive?id=${id}`);
+    await fetch(`${import.meta.env.VITE_API_URL}/archive?id=${id}`);
     bookmarks = bookmarks.filter((b) => b.bookmark_id !== id);
     if (selectedBookmark >= bookmarks.length) {
       selectedBookmark--;
@@ -228,18 +228,18 @@
   }
 
   async function star(id) {
-    await fetch(`http://localhost:3000/star?id=${id}`);
+    await fetch(`${import.meta.env.VITE_API_URL}/star?id=${id}`);
     bookmarks = bookmarks.map((b) => (b.bookmark_id === id ? { ...b, starred: '1' } : b));
   }
 
   async function unstar(id) {
-    await fetch(`http://localhost:3000/unstar?id=${id}`);
+    await fetch(`${import.meta.env.VITE_API_URL}/unstar?id=${id}`);
     bookmarks = bookmarks.map((b) => (b.bookmark_id === id ? { ...b, starred: '0' } : b));
   }
 
   async function updateReadProgress(id, progress) {
     try {
-      const response = await fetch(`http://localhost:3000/updateProgress?id=${id}&progress=${progress}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/updateProgress?id=${id}&progress=${progress}`);
       if (!response.ok) {
         const error = await response.json();
         console.error('Failed to update progress:', error.error);
@@ -259,7 +259,7 @@
   async function getText(id) {
     console.log('Fetching text for bookmark ID:', id);
     try {
-      const response = await fetch(`http://localhost:3000/getText?id=${id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/getText?id=${id}`);
       console.log('Response status:', response.status);
 
       if (!response.ok) {
