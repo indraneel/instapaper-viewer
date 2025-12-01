@@ -67,7 +67,39 @@
 
     const currentIndex = allBookmarks.findIndex((b) => b.bookmark_id === selectedBookmarkId);
 
-    if (e.key === 'j') {
+    if (e.shiftKey && e.key === 'J') {
+      // Jump to next group
+      const groupKeys = Object.keys(groups);
+      if (groupKeys.length === 0) return;
+      const currentGroupIndex = groupKeys.findIndex(key =>
+        groups[key].some(b => b.bookmark_id === selectedBookmarkId)
+      );
+      const nextGroupIndex = (currentGroupIndex + 1) % groupKeys.length;
+      const nextGroup = groups[groupKeys[nextGroupIndex]];
+      if (nextGroup?.length > 0) {
+        selectedBookmarkId = nextGroup[0].bookmark_id;
+        selectedBookmark = bookmarks.findIndex((b) => b.bookmark_id === selectedBookmarkId);
+        setTimeout(() => {
+          document.getElementById(`row-${selectedBookmarkId}`)?.scrollIntoView({ block: 'center' });
+        }, 0);
+      }
+    } else if (e.shiftKey && e.key === 'K') {
+      // Jump to previous group
+      const groupKeys = Object.keys(groups);
+      if (groupKeys.length === 0) return;
+      const currentGroupIndex = groupKeys.findIndex(key =>
+        groups[key].some(b => b.bookmark_id === selectedBookmarkId)
+      );
+      const prevGroupIndex = currentGroupIndex - 1 < 0 ? groupKeys.length - 1 : currentGroupIndex - 1;
+      const prevGroup = groups[groupKeys[prevGroupIndex]];
+      if (prevGroup?.length > 0) {
+        selectedBookmarkId = prevGroup[0].bookmark_id;
+        selectedBookmark = bookmarks.findIndex((b) => b.bookmark_id === selectedBookmarkId);
+        setTimeout(() => {
+          document.getElementById(`row-${selectedBookmarkId}`)?.scrollIntoView({ block: 'center' });
+        }, 0);
+      }
+    } else if (e.key === 'j') {
       const nextIndex = (currentIndex + 1) % allBookmarks.length;
       selectedBookmarkId = allBookmarks[nextIndex].bookmark_id;
       selectedBookmark = bookmarks.findIndex((b) => b.bookmark_id === selectedBookmarkId);
