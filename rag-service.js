@@ -121,7 +121,7 @@ class RAGService {
     return article;
   }
 
-  async semanticSearch(query, limit = 15) {
+  async semanticSearch(query, limit = 100) {
     const queryEmbedding = await this.generateEmbedding(query);
     const queryLower = query.toLowerCase();
     
