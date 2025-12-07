@@ -127,7 +127,14 @@ class RAGService {
   async semanticSearch(query, limit = 100) {
     const queryEmbedding = await this.generateEmbedding(query);
     const queryLower = query.toLowerCase();
-    
+
+    // Direct text search for exact matches in article content
+    const textMatches = await this.db.all(
+      `SELECT bookmark_id FROM articles WHERE text LIKE ? COLLATE NOCASE`,
+      [`%${query}%`]
+    );
+    const textMatchIds = new Set(textMatches.map(r => r.bookmark_id));
+
     const chunks = await this.db.all(`
       SELECT 
         a.title,
@@ -167,6 +174,9 @@ class RAGService {
       const allWordsInTitle = queryWords.length > 0 && queryWords.every(word => titleLower.includes(word));
       const allWordsScore = allWordsInTitle ? 1.5 : 0;
 
+      // Tier 2c: Direct text match in article content - base score 2.0
+      const textMatchScore = textMatchIds.has(chunk.bookmark_id) ? 2.0 : 0;
+
       // Tier 3: Semantic title match (Levenshtein) - base score 0-1
       const distance = this.levenshteinDistance(titleLower, queryLower);
       const maxLength = Math.max(titleLower.length, queryLower.length);
@@ -174,7 +184,7 @@ class RAGService {
 
       // Combined: highest tier + bonuses + embedding as tiebreaker
       const tierScore = Math.max(domainScore, publicationScore, exactTitleScore, semanticTitleScore);
-      const combinedScore = tierScore + allWordsScore + (embeddingSimilarity * 0.1);
+      const combinedScore = tierScore + allWordsScore + textMatchScore + (embeddingSimilarity * 0.1);
 
       return {
         ...chunk,
@@ -184,6 +194,7 @@ class RAGService {
         publication,
         exactTitleScore,
         allWordsScore,
+        textMatchScore,
         semanticTitleScore,
         embeddingSimilarity
       };
