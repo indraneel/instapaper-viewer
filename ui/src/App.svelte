@@ -165,7 +165,32 @@
     }
   }
 
+  function getSearchReasonTags(result) {
+    if (!result) return [];
+
+    const tags = [];
+    if (result.textMatchScore > 0) tags.push({ label: 'in text', color: 'bg-green-700' });
+    if (result.exactTitleScore > 0) tags.push({ label: 'in title', color: 'bg-blue-700' });
+    if (result.allWordsScore > 0) tags.push({ label: 'title words', color: 'bg-blue-600' });
+    if (result.domainScore > 0) tags.push({ label: 'domain', color: 'bg-purple-700' });
+    if (result.publicationScore > 0) tags.push({ label: 'publication', color: 'bg-purple-600' });
+
+    // Only show semantic if no other matches
+    if (tags.length === 0) {
+      tags.push({ label: 'semantic', color: 'bg-stone-600' });
+    }
+
+    return tags;
+  }
+
   function groupBookmarks() {
+    // Skip grouping when searching - show flat ranked list
+    if (searchResults.length > 0) {
+      groups = {};
+      filteredBookmarks = [...bookmarks];
+      return;
+    }
+
     if (!groupBy) {
       groups = {};
       filteredBookmarks = [...bookmarks];
@@ -543,7 +568,67 @@
       <div class="bg-stone-800 h-[calc(70vh-2.5rem)] sm:h-[calc(100vh-4rem)] overflow-auto">
         <table class="text-lg text-left table-fixed w-full">
           <tbody class="w-full">
-            {#if groupBy}
+            {#if searchResults.length > 0}
+              <!-- Search results: flat ranked list, no grouping -->
+              {#each bookmarks as bookmark, i}
+                {@const searchResult = searchResults.find(r => r.bookmark_id === bookmark.bookmark_id)}
+                {@const reasonTags = getSearchReasonTags(searchResult)}
+                <tr
+                  id="row-{bookmark.bookmark_id}"
+                  class="cursor-pointer min-w-full border-b text-stone-400 {selectedBookmarkId === bookmark.bookmark_id ? 'bg-stone-600' : ''}"
+                  on:click={() => {
+                    selectedBookmark = i;
+                    selectedBookmarkId = bookmark.bookmark_id;
+                    getText(bookmark.bookmark_id);
+                  }}
+                >
+                  <td colspan="5" class="w-full p-2 sm:p-0">
+                    <div class="flex justify-between w-full">
+                      <div class="flex flex-col gap-1 flex-1 min-w-0">
+                        <div class="truncate text-sm sm:text-base flex items-center gap-2">
+                          <span class="text-stone-500 text-xs w-6">#{i + 1}</span>
+                          <a
+                            href={bookmark.url}
+                            target="_blank"
+                            class="hover:underline truncate"
+                            on:click|stopPropagation={(e) => { if (isMobile) e.preventDefault(); }}
+                          >
+                            {bookmark.title || bookmark.url}
+                          </a>
+                          {#each reasonTags as tag}
+                            <span class="text-xs px-1.5 py-0.5 rounded {tag.color} text-stone-200 whitespace-nowrap">
+                              {tag.label}
+                            </span>
+                          {/each}
+                          {#if searchResult?.similarity}
+                            <span class="text-xs px-1.5 py-0.5 rounded bg-stone-700 text-stone-400 whitespace-nowrap">
+                              {searchResult.similarity.toFixed(2)}
+                            </span>
+                          {/if}
+                        </div>
+                        <div class="text-xs truncate hidden sm:block pl-6">
+                          <span class="text-xs">{bookmark.url}</span>
+                        </div>
+                      </div>
+                      <div class="flex flex-row items-center gap-1 sm:w-1/6 shrink-0">
+                        <span class="text-xs sm:text-base">{Math.round(bookmark.progress * 100)}%</span>
+                        <button
+                          on:click|stopPropagation={() => {
+                            if (bookmark.starred === '1') {
+                              unstar(bookmark.bookmark_id);
+                            } else {
+                              star(bookmark.bookmark_id);
+                            }
+                          }}
+                        >
+                          {bookmark.starred === '1' ? '♥' : '♡'}
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            {:else if groupBy}
               {#each Object.entries(groups) as [groupKey, groupBookmarks]}
                 <!-- Group header row -->
                 <tr class="text-stone-100 bg-stone-700">
