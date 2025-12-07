@@ -162,14 +162,19 @@ class RAGService {
       // Tier 2: Exact title match (title contains query) - base score 2.0
       const exactTitleScore = titleLower.includes(queryLower) ? 2.0 : 0;
 
+      // Tier 2b: All query words appear in title - base score 1.5
+      const queryWords = queryLower.split(/\s+/).filter(w => w.length > 1);
+      const allWordsInTitle = queryWords.length > 0 && queryWords.every(word => titleLower.includes(word));
+      const allWordsScore = allWordsInTitle ? 1.5 : 0;
+
       // Tier 3: Semantic title match (Levenshtein) - base score 0-1
       const distance = this.levenshteinDistance(titleLower, queryLower);
       const maxLength = Math.max(titleLower.length, queryLower.length);
       const semanticTitleScore = 1 - (distance / maxLength);
 
-      // Combined: highest tier + embedding as tiebreaker
+      // Combined: highest tier + bonuses + embedding as tiebreaker
       const tierScore = Math.max(domainScore, publicationScore, exactTitleScore, semanticTitleScore);
-      const combinedScore = tierScore + (embeddingSimilarity * 0.1);
+      const combinedScore = tierScore + allWordsScore + (embeddingSimilarity * 0.1);
 
       return {
         ...chunk,
@@ -178,6 +183,7 @@ class RAGService {
         publicationScore,
         publication,
         exactTitleScore,
+        allWordsScore,
         semanticTitleScore,
         embeddingSimilarity
       };
@@ -291,8 +297,14 @@ class RAGService {
   publicationMatchScore(query, publication) {
     if (!publication) return 0;
 
+    // Skip truncated publication names (contain ellipsis)
+    if (publication.includes('…') || publication.includes('...')) return 0;
+
     let normQuery = this.normalizeForMatch(query);
     const normPub = this.normalizeForMatch(publication);
+
+    // Skip if publication name is too short
+    if (normPub.length < 3) return 0;
 
     // Check if query is a known abbreviation
     const abbrevs = this.getAbbreviations();
