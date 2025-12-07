@@ -1,11 +1,9 @@
-const { OpenAI } = require('openai');
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const { encode, decode } = require('gpt-3-encoder');
 
 class RAGService {
-  constructor(dbPath, openaiApiKey) {
-    this.openai = new OpenAI({ apiKey: openaiApiKey });
+  constructor(dbPath) {
     this.dbPath = dbPath;
     this.chunkSize = 8000; // Tokens per chunk
   }
@@ -51,38 +49,47 @@ class RAGService {
   }
 
   async generateEmbedding(text) {
-    const response = await this.openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: text
+    // Use local LM Studio for embeddings (free, 768d)
+    const response = await fetch('http://localhost:1234/v1/embeddings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: text,
+        model: 'text-embedding-embeddinggemma-300m-qat'
+      })
     });
-    return response.data[0].embedding;
+    const data = await response.json();
+    return data.data[0].embedding;
   }
 
   async generateSummary(text, bookmarkId) {
+    // Use local LM Studio for summaries (free)
     const chunks = this.chunkText(text);
     const summaries = await Promise.all(chunks.map(async (chunk, index) => {
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "Summarize this text segment concisely."
-          },
-          { role: "user", content: chunk }
-        ],
-        temperature: 0.3,
-        max_tokens: 150
+      const response = await fetch('http://localhost:1234/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'google/gemma-3-1b',
+          messages: [
+            { role: "system", content: "Summarize this text segment concisely." },
+            { role: "user", content: chunk }
+          ],
+          temperature: 0.3,
+          max_tokens: 150
+        })
       });
-      const summary = response.choices[0].message.content;
+      const data = await response.json();
+      const summary = data.choices[0].message.content;
       // Write chunk summary to DB
       await this.db.run(
         'UPDATE article_chunks SET chunk_summary = ? WHERE bookmark_id = ? AND chunk_index = ?',
         [summary, bookmarkId, index]
       );
-      
+
       return summary;
     }));
-    
+
     // Combine all chunk summaries into one
     return summaries.join('\n\n');
   }
@@ -94,13 +101,17 @@ class RAGService {
     );
       
     if (!article?.text) return null;
-    
-    // Skip if summary exists
-    if (article.summary) {
+
+    // Check if embeddings already exist for this article
+    const existingChunks = await this.db.get(
+      'SELECT COUNT(*) as count FROM article_chunks WHERE bookmark_id = ? AND embedding IS NOT NULL',
+      bookmarkId
+    );
+    if (existingChunks?.count > 0) {
       return article;
     }
-  
-    // Process chunks
+
+    // Process chunks (embeddings via local LM Studio)
     const chunks = this.chunkText(article.text);
     await Promise.all(chunks.map(async (chunk, index) => {
       const embedding = await this.generateEmbedding(chunk);
@@ -109,14 +120,6 @@ class RAGService {
         [bookmarkId, index, chunk, Buffer.from(JSON.stringify(embedding))]
       );
     }));
-  
-    // Generate summary
-    const summary = await this.generateSummary(article.text);
-    await this.db.run(
-      'UPDATE articles SET summary = ? WHERE bookmark_id = ?',
-      [summary, bookmarkId]
-    );
-    article.summary = summary;
   
     return article;
   }

@@ -6,9 +6,9 @@ const sqlite3 = require("sqlite3").verbose();
 const open = require("sqlite").open;
 require('dotenv').config();
 
-// Initialize RAG service
+// Initialize RAG service (uses local LM Studio - no OpenAI needed)
 const RAGService = require('./rag-service');
-const ragService = new RAGService('./instapaper.db', process.env.OPENAI_API_KEY);
+const ragService = new RAGService('./instapaper.db');
 
 
 
