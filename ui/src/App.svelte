@@ -25,6 +25,11 @@
   let isMobile = false;
   let mobileListVisible = true;
 
+  // Reader typography settings
+  let fontSize = '2xl';
+  let lineHeight = 'snug';
+  let readerMargin = 'xl';
+
   function calculateReadingProgress(element) {
     const scrollTop = element.scrollTop;
     const scrollHeight = element.scrollHeight - element.clientHeight;
@@ -226,6 +231,29 @@
     filterProgress = null;
     groups = {};
     fetchBookmarks();
+  }
+
+  // Typography control functions
+  const fontSizes = ['sm', 'base', 'lg', 'xl', '2xl'];
+  const lineHeights = ['tight', 'snug', 'normal', 'relaxed', 'loose'];
+  const marginSizes = ['sm', 'md', 'lg', 'xl'];
+  const fontSizeMap = { sm: '0.875rem', base: '1rem', lg: '1.125rem', xl: '1.25rem', '2xl': '1.5rem' };
+  const lineHeightMap = { tight: '1.25', snug: '1.375', normal: '1.5', relaxed: '1.625', loose: '2' };
+  const marginMap = { sm: '0.5rem', md: '1rem', lg: '2rem', xl: '4rem' };
+
+  function cycleFontSize() {
+    const idx = fontSizes.indexOf(fontSize);
+    fontSize = fontSizes[(idx + 1) % fontSizes.length];
+  }
+
+  function cycleLineHeight() {
+    const idx = lineHeights.indexOf(lineHeight);
+    lineHeight = lineHeights[(idx + 1) % lineHeights.length];
+  }
+
+  function cycleMargin() {
+    const idx = marginSizes.indexOf(readerMargin);
+    readerMargin = marginSizes[(idx + 1) % marginSizes.length];
   }
 
   function closeSearch(keepSelection = false) {
@@ -469,6 +497,28 @@
       on:click={resetFilters}
     >
       Reset
+    </button>
+
+    <button
+      class="hidden sm:block px-3 py-1.5 text-sm bg-stone-800 text-stone-100 rounded hover:bg-stone-700"
+      on:click={cycleFontSize}
+      title="Font size"
+    >
+      Aa {fontSize}
+    </button>
+    <button
+      class="hidden sm:block px-3 py-1.5 text-sm bg-stone-800 text-stone-100 rounded hover:bg-stone-700"
+      on:click={cycleLineHeight}
+      title="Line height"
+    >
+      ↕ {lineHeight}
+    </button>
+    <button
+      class="hidden sm:block px-3 py-1.5 text-sm bg-stone-800 text-stone-100 rounded hover:bg-stone-700"
+      on:click={cycleMargin}
+      title="Margin"
+    >
+      ⬌ {readerMargin}
     </button>
   </div>
 
@@ -782,7 +832,8 @@
       {/if}
       <div
         id="text-view"
-        class="bg-stone-800 text-stone-400 w-full h-[calc(100vh-4rem-3.5rem)] text-lg overflow-auto"
+        class="bg-stone-800 text-stone-400 w-full h-[calc(100vh-4rem-3.5rem)] overflow-auto"
+        style="font-size: {fontSizeMap[fontSize]}; line-height: {lineHeightMap[lineHeight]}; padding-left: {marginMap[readerMargin]}; padding-right: {marginMap[readerMargin]};"
         on:scroll={handleScroll}
       >
         {@html textViewContent}
