@@ -566,78 +566,92 @@
         <div class="w-12 h-1.5 bg-stone-500 rounded-full"></div>
       </button>
       <div class="bg-stone-800 h-[calc(70vh-2.5rem)] sm:h-[calc(100vh-4rem)] overflow-auto">
+        {#snippet bookmarkRow(bookmark, i, searchResult = null)}
+          {@const reasonTags = searchResult ? getSearchReasonTags(searchResult) : []}
+          <tr
+            id="row-{bookmark.bookmark_id}"
+            class="cursor-pointer min-w-full border-b text-stone-400 {selectedBookmarkId === bookmark.bookmark_id ? 'bg-stone-600' : ''}"
+            on:click={() => {
+              selectedBookmark = i;
+              selectedBookmarkId = bookmark.bookmark_id;
+              getText(bookmark.bookmark_id);
+              if (originalBookmarks && !searchResult) closeSearch(true);
+            }}
+          >
+            <td colspan="5" class="w-full p-2 sm:p-0">
+              <div class="flex justify-between w-full">
+                <div class="flex flex-col gap-1 flex-1 min-w-0">
+                  <div class="truncate text-sm sm:text-base flex items-center gap-2">
+                    {#if searchResult}
+                      <span class="text-stone-500 text-xs w-6">#{i + 1}</span>
+                    {/if}
+                    <a
+                      href={bookmark.url}
+                      target="_blank"
+                      class="hover:underline truncate"
+                      on:click|stopPropagation={(e) => { if (isMobile) e.preventDefault(); }}
+                    >
+                      {bookmark.title || bookmark.url}
+                    </a>
+                    {#each reasonTags as tag}
+                      <span class="text-xs px-1.5 py-0.5 rounded {tag.color} text-stone-200 whitespace-nowrap">
+                        {tag.label}
+                      </span>
+                    {/each}
+                    {#if searchResult?.similarity}
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-stone-700 text-stone-400 whitespace-nowrap">
+                        {searchResult.similarity.toFixed(2)}
+                      </span>
+                    {/if}
+                  </div>
+                  <div class="text-xs truncate hidden sm:block {searchResult ? 'pl-6' : ''}">
+                    {#if bookmark.progress_timestamp !== 0}
+                      <span>
+                        Last read {new Date(bookmark.progress_timestamp).getFullYear()}-
+                        {new Date(bookmark.progress_timestamp).getMonth() + 1}-
+                        {new Date(bookmark.progress_timestamp).getDate()} |
+                      </span>
+                    {/if}
+                    <span class="text-xs">{bookmark.url}</span>
+                  </div>
+                </div>
+                <div class="flex flex-row items-center gap-1 sm:w-1/6 shrink-0">
+                  <span class="text-xs sm:text-base">{Math.round(bookmark.progress * 100)}%</span>
+                  <div class="flex gap-2">
+                    <button
+                      class="hidden sm:block"
+                      on:click|stopPropagation={() => archive(bookmark.bookmark_id, i)}
+                    >
+                      Archive
+                    </button>
+                    <button class="hidden sm:block" on:click|stopPropagation={() => getText(bookmark.bookmark_id)}>
+                      ▶
+                    </button>
+                    <button
+                      on:click|stopPropagation={() => {
+                        if (bookmark.starred === '1') {
+                          unstar(bookmark.bookmark_id);
+                        } else {
+                          star(bookmark.bookmark_id);
+                        }
+                      }}
+                    >
+                      {bookmark.starred === '1' ? '♥' : '♡'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        {/snippet}
+
         <table class="text-lg text-left table-fixed w-full">
           <tbody class="w-full">
             {#if searchResults.length > 0}
               <!-- Search results: flat ranked list, no grouping -->
               {#each bookmarks as bookmark, i}
                 {@const searchResult = searchResults.find(r => r.bookmark_id === bookmark.bookmark_id)}
-                {@const reasonTags = getSearchReasonTags(searchResult)}
-                <tr
-                  id="row-{bookmark.bookmark_id}"
-                  class="cursor-pointer min-w-full border-b text-stone-400 {selectedBookmarkId === bookmark.bookmark_id ? 'bg-stone-600' : ''}"
-                  on:click={() => {
-                    selectedBookmark = i;
-                    selectedBookmarkId = bookmark.bookmark_id;
-                    getText(bookmark.bookmark_id);
-                  }}
-                >
-                  <td colspan="5" class="w-full p-2 sm:p-0">
-                    <div class="flex justify-between w-full">
-                      <div class="flex flex-col gap-1 flex-1 min-w-0">
-                        <div class="truncate text-sm sm:text-base flex items-center gap-2">
-                          <span class="text-stone-500 text-xs w-6">#{i + 1}</span>
-                          <a
-                            href={bookmark.url}
-                            target="_blank"
-                            class="hover:underline truncate"
-                            on:click|stopPropagation={(e) => { if (isMobile) e.preventDefault(); }}
-                          >
-                            {bookmark.title || bookmark.url}
-                          </a>
-                          {#each reasonTags as tag}
-                            <span class="text-xs px-1.5 py-0.5 rounded {tag.color} text-stone-200 whitespace-nowrap">
-                              {tag.label}
-                            </span>
-                          {/each}
-                          {#if searchResult?.similarity}
-                            <span class="text-xs px-1.5 py-0.5 rounded bg-stone-700 text-stone-400 whitespace-nowrap">
-                              {searchResult.similarity.toFixed(2)}
-                            </span>
-                          {/if}
-                        </div>
-                        <div class="text-xs truncate hidden sm:block pl-6">
-                          <span class="text-xs">{bookmark.url}</span>
-                        </div>
-                      </div>
-                      <div class="flex flex-row items-center gap-1 sm:w-1/6 shrink-0">
-                        <span class="text-xs sm:text-base">{Math.round(bookmark.progress * 100)}%</span>
-                        <div class="flex gap-2">
-                          <button
-                            class="hidden sm:block"
-                            on:click|stopPropagation={() => archive(bookmark.bookmark_id, i)}
-                          >
-                            Archive
-                          </button>
-                          <button class="hidden sm:block" on:click|stopPropagation={() => getText(bookmark.bookmark_id)}>
-                            ▶
-                          </button>
-                          <button
-                            on:click|stopPropagation={() => {
-                              if (bookmark.starred === '1') {
-                                unstar(bookmark.bookmark_id);
-                              } else {
-                                star(bookmark.bookmark_id);
-                              }
-                            }}
-                          >
-                            {bookmark.starred === '1' ? '♥' : '♡'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
+                {@render bookmarkRow(bookmark, i, searchResult)}
               {/each}
             {:else if groupBy}
               {#each Object.entries(groups) as [groupKey, groupBookmarks]}
@@ -679,174 +693,13 @@
                 <!-- Bookmark rows -->
                 {#if !collapsedGroups.has(groupKey)}
                   {#each groupBookmarks as bookmark, i}
-                    <tr
-                      id="row-{bookmark.bookmark_id}"
-                      class="cursor-pointer min-w-full border-b text-stone-400 {selectedBookmarkId ===
-                      bookmark.bookmark_id
-                        ? 'bg-stone-600'
-                        : ''}"
-                      on:click={() => {
-                        selectedBookmark = i;
-                        selectedBookmarkId = bookmark.bookmark_id;
-                        getText(bookmark.bookmark_id);
-                        if (originalBookmarks) closeSearch(true);
-                      }}
-                    >
-                      <td colspan="5" class="w-full p-2 sm:p-0">
-                        <div class="flex justify-between w-full">
-                          <div class="flex flex-col gap-1 flex-1 min-w-0">
-                            <div class="truncate text-sm sm:text-base">
-                              <a
-                                href={bookmark.url}
-                                target="_blank"
-                                class="hover:underline"
-                                on:click|stopPropagation={(e) => { if (isMobile) e.preventDefault(); }}
-                              >
-                                {bookmark.title || bookmark.url}
-                              </a>
-                            </div>
-                            <div class="text-xs truncate hidden sm:block">
-                              {#if bookmark.progress_timestamp !== 0}
-                                <span>
-                                  Last read {new Date(bookmark.progress_timestamp).getFullYear()}-
-                                  {new Date(bookmark.progress_timestamp).getMonth() + 1}-
-                                  {new Date(bookmark.progress_timestamp).getDate()} |
-                                </span>
-                              {/if}
-                              <span class="text-xs">{bookmark.url}</span>
-                            </div>
-                          </div>
-                          <div class="flex flex-row items-center gap-1 sm:w-1/6 shrink-0">
-                            <span class="text-xs sm:text-base">{Math.round(bookmark.progress * 100)}%</span>
-                            <div class="flex gap-2">
-                              <button
-                                class="hidden sm:block"
-                                on:click|stopPropagation={() => archive(bookmark.bookmark_id, i)}
-                              >
-                                Archive
-                              </button>
-                              <button class="hidden sm:block" on:click|stopPropagation={() => getText(bookmark.bookmark_id)}>
-                                ▶
-                              </button>
-                              <button
-                                on:click|stopPropagation={() => {
-                                  if (bookmark.starred === '1') {
-                                    unstar(bookmark.bookmark_id);
-                                  } else {
-                                    star(bookmark.bookmark_id);
-                                  }
-                                }}
-                              >
-                                {bookmark.starred === '1' ? '♥' : '♡'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
+                    {@render bookmarkRow(bookmark, i, null)}
                   {/each}
                 {/if}
               {/each}
             {:else}
-              {#each bookmarks as bookmark}
-                {@const dateAdded = new Date(bookmark.time)}
-                {@const formattedDate = `${dateAdded.getFullYear()}-${dateAdded.getMonth() + 1}-${dateAdded.getDate()}`}
-                {#if currentDate !== formattedDate}
-                  {@const temp = currentDate = formattedDate}
-                  <tr class="text-stone-100">
-                    <td colspan="5" class="px-4 py-2">{formattedDate}</td>
-                  </tr>
-                {/if}
-                <tr
-                  id="row-{bookmark.bookmark_id}"
-                  class="cursor-pointer border-b text-stone-400 {selectedBookmarkId ===
-                  bookmark.bookmark_id
-                    ? 'bg-stone-600'
-                    : ''}"
-                  on:click={() => {
-                    selectedBookmark = bookmarks.indexOf(bookmark);
-                    selectedBookmarkId = bookmark.bookmark_id;
-                    getText(bookmark.bookmark_id);
-                    if (originalBookmarks) closeSearch(true);
-                  }}
-                >
-                  <!-- Mobile: Single cell layout -->
-                  <td class="sm:hidden w-full p-2">
-                    <div class="flex justify-between w-full">
-                      <div class="flex flex-col gap-1 flex-1 min-w-0">
-                        <div class="truncate text-sm">
-                          <a
-                            href={bookmark.url}
-                            target="_blank"
-                            class="hover:underline"
-                            on:click|stopPropagation={(e) => { if (isMobile) e.preventDefault(); }}
-                          >
-                            {bookmark.title || bookmark.url}
-                          </a>
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-1 shrink-0">
-                        <span class="text-xs">{Math.round(bookmark.progress * 100)}%</span>
-                        <button
-                          on:click|stopPropagation={() => {
-                            if (bookmark.starred === '1') {
-                              unstar(bookmark.bookmark_id);
-                            } else {
-                              star(bookmark.bookmark_id);
-                            }
-                          }}
-                        >
-                          {bookmark.starred === '1' ? '♥' : '♡'}
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                  <!-- Desktop: Multi-column layout -->
-                  <td class="hidden sm:table-cell w-[5%] text-center">
-                    <button
-                      on:click|stopPropagation={() => {
-                        if (bookmark.starred === '1') {
-                          unstar(bookmark.bookmark_id);
-                        } else {
-                          star(bookmark.bookmark_id);
-                        }
-                      }}
-                    >
-                      {bookmark.starred === '1' ? '♥' : '♡'}
-                    </button>
-                  </td>
-                  <td class="hidden sm:table-cell w-[60%] max-w-0">
-                    <div class="truncate">
-                      <a href={bookmark.url} target="_blank" class="hover:underline">
-                        {bookmark.title || bookmark.url}
-                      </a>
-                    </div>
-                    <div class="text-xs truncate">
-                      {#if bookmark.progress_timestamp !== 0}
-                        <span>
-                          Last read {new Date(bookmark.progress_timestamp).getFullYear()}-
-                          {new Date(bookmark.progress_timestamp).getMonth() + 1}-
-                          {new Date(bookmark.progress_timestamp).getDate()} |
-                        </span>
-                      {/if}
-                      <span class="text-xs">{bookmark.url}</span>
-                    </div>
-                  </td>
-                  <td class="hidden sm:table-cell w-[10%] text-center">{Math.round(bookmark.progress * 100)}%</td>
-                  <td class="hidden sm:table-cell w-[15%] text-center">
-                    <button
-                      on:click|stopPropagation={() =>
-                        archive(bookmark.bookmark_id, bookmarks.indexOf(bookmark))}
-                    >
-                      Archive
-                    </button>
-                  </td>
-                  <td class="hidden sm:table-cell w-[10%] text-center">
-                    <button on:click|stopPropagation={() => getText(bookmark.bookmark_id)}>
-                      ▶
-                    </button>
-                  </td>
-                </tr>
+              {#each bookmarks as bookmark, i}
+                {@render bookmarkRow(bookmark, i, null)}
               {/each}
             {/if}
           </tbody>
