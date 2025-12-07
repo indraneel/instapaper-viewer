@@ -138,7 +138,7 @@ class RAGService {
     `);
 
     const similarities = chunks.map(chunk => {
-      // Tier 4: Semantic content (embedding similarity) - base score 0-1
+      // Tier 5: Semantic content (embedding similarity) - base score 0-1
       const embeddingSimilarity = this.cosineSimilarity(
         queryEmbedding,
         JSON.parse(chunk.embedding.toString())
@@ -150,6 +150,12 @@ class RAGService {
       // Tier 1: Domain match (partial) - base score 3.0
       const domainScore = domain.includes(queryLower) ? 3.0 : 0;
 
+      // Tier 1b: Publication name from title (for archive.ph, t.co, etc.) - base score 3.0
+      // This handles cases where URL is a shortener but title has "Article | Publication Name"
+      const publication = this.extractPublicationFromTitle(chunk.title);
+      const pubMatchScore = this.publicationMatchScore(query, publication);
+      const publicationScore = pubMatchScore > 0 ? pubMatchScore * 3.0 : 0;
+
       // Tier 2: Exact title match (title contains query) - base score 2.0
       const exactTitleScore = titleLower.includes(queryLower) ? 2.0 : 0;
 
@@ -159,13 +165,15 @@ class RAGService {
       const semanticTitleScore = 1 - (distance / maxLength);
 
       // Combined: highest tier + embedding as tiebreaker
-      const tierScore = Math.max(domainScore, exactTitleScore, semanticTitleScore);
+      const tierScore = Math.max(domainScore, publicationScore, exactTitleScore, semanticTitleScore);
       const combinedScore = tierScore + (embeddingSimilarity * 0.1);
 
       return {
         ...chunk,
         similarity: combinedScore,
         domainScore,
+        publicationScore,
+        publication,
         exactTitleScore,
         semanticTitleScore,
         embeddingSimilarity
@@ -225,6 +233,86 @@ class RAGService {
     } catch {
       return '';
     }
+  }
+
+  /**
+   * Extract publication name from title (e.g., "Article Title | The New Yorker" -> "The New Yorker")
+   * Handles both " | " and " - " separators
+   */
+  extractPublicationFromTitle(title) {
+    // Try pipe separator first (most reliable)
+    const pipeMatch = title.match(/ \| ([^|]+)$/);
+    if (pipeMatch) {
+      return pipeMatch[1].trim();
+    }
+
+    // Try dash separator - look for " - " followed by capitalized word (publication name)
+    const dashMatch = title.match(/ - ([A-Z][^-]*)$/);
+    if (dashMatch) {
+      return dashMatch[1].trim();
+    }
+
+    return null;
+  }
+
+  /**
+   * Normalize a string for fuzzy matching:
+   * - lowercase
+   * - remove "the" prefix
+   * - remove spaces and punctuation
+   */
+  normalizeForMatch(str) {
+    return str
+      .toLowerCase()
+      .replace(/^the\s+/, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  /**
+   * Common abbreviations mapping for publications
+   */
+  getAbbreviations() {
+    return {
+      'nyt': 'newyorktimes',
+      'nytimes': 'newyorktimes',
+      'wapo': 'washingtonpost',
+      'ft': 'financialtimes',
+      'bbc': 'bbcnews',
+    };
+  }
+
+  /**
+   * Score how well a query matches a publication name
+   * Returns 0-1 score, higher is better match
+   */
+  publicationMatchScore(query, publication) {
+    if (!publication) return 0;
+
+    let normQuery = this.normalizeForMatch(query);
+    const normPub = this.normalizeForMatch(publication);
+
+    // Check if query is a known abbreviation
+    const abbrevs = this.getAbbreviations();
+    if (abbrevs[normQuery]) {
+      normQuery = abbrevs[normQuery];
+    }
+
+    // Exact match after normalization (e.g., "newyorker" -> "newyorker")
+    if (normPub === normQuery) return 1.0;
+
+    // Query is contained in publication (e.g., "yorker" in "newyorker")
+    if (normPub.includes(normQuery)) return 0.9;
+
+    // Publication is contained in query (e.g., "wsj" in "wsjnews")
+    if (normQuery.includes(normPub)) return 0.85;
+
+    // Fuzzy match using Levenshtein on normalized strings
+    const distance = this.levenshteinDistance(normQuery, normPub);
+    const maxLen = Math.max(normQuery.length, normPub.length);
+    const similarity = 1 - (distance / maxLen);
+
+    // Only count as a match if reasonably similar (> 0.6)
+    return similarity > 0.6 ? similarity * 0.8 : 0;
   }
 }
 
