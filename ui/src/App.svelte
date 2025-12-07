@@ -612,17 +612,28 @@
                       </div>
                       <div class="flex flex-row items-center gap-1 sm:w-1/6 shrink-0">
                         <span class="text-xs sm:text-base">{Math.round(bookmark.progress * 100)}%</span>
-                        <button
-                          on:click|stopPropagation={() => {
-                            if (bookmark.starred === '1') {
-                              unstar(bookmark.bookmark_id);
-                            } else {
-                              star(bookmark.bookmark_id);
-                            }
-                          }}
-                        >
-                          {bookmark.starred === '1' ? '♥' : '♡'}
-                        </button>
+                        <div class="flex gap-2">
+                          <button
+                            class="hidden sm:block"
+                            on:click|stopPropagation={() => archive(bookmark.bookmark_id, i)}
+                          >
+                            Archive
+                          </button>
+                          <button class="hidden sm:block" on:click|stopPropagation={() => getText(bookmark.bookmark_id)}>
+                            ▶
+                          </button>
+                          <button
+                            on:click|stopPropagation={() => {
+                              if (bookmark.starred === '1') {
+                                unstar(bookmark.bookmark_id);
+                              } else {
+                                star(bookmark.bookmark_id);
+                              }
+                            }}
+                          >
+                            {bookmark.starred === '1' ? '♥' : '♡'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </td>
