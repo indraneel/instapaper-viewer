@@ -165,13 +165,14 @@ app.get("/bookmarks", async function (req, res) {
 });
 
 app.get("/archive", async function (req, res) {
-    const response = await archiveDb(req.query.id);
-    res.send(response);
-    /*
-  client.archive(req.query.id).then((r) => {
-    res.send(r);
-  });
-  */
+    const id = req.query.id;
+    try {
+        await client.archive(id);
+        await archiveDb(id);
+        res.send(true);
+    } catch (err) {
+        res.status(500).send({ error: err.message });
+    }
 });
 
 app.get("/star", function (req, res) {
